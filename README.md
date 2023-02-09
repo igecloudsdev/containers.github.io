@@ -1,4 +1,4 @@
-# Development Containers Website
+# Developers & Designers Resource Repository
 
 This repo holds the website for the [Development Containers Specification](https://github.com/devcontainers/spec).
 
@@ -8,7 +8,7 @@ You may view the site at [containers.dev](https://containers.dev).
 
 If you'd like to build and preview the site yourself, we make it as smooth as possible through a dev container in this repo!
 
-### Dev container
+### Dev & Design Container
 
 You may build GitHub Pages sites with [Jekyll](https://jekyllrb.com/), which is a Ruby gem. You could manually install these tools on your machine, or you can easily get started with the setup you already need through a dev container!
 
@@ -24,7 +24,7 @@ It is from this [Jekyll definition](https://github.com/microsoft/vscode-dev-cont
 * Once the dev container finishes building, execute the following command in your dev container to start the site: `bundle exec jekyll serve`
 * Check out the site! http://localhost:4000/containers.dev/
 
-## Feedback and contributing
+## Feedback and contributing 
 
 If you'd like to provide feedback on or contribute to the dev containers website, please feel free to open an issue or PR in this repo.
 
