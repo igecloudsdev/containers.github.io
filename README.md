@@ -24,12 +24,3 @@ It is from this [Jekyll definition](https://github.com/microsoft/vscode-dev-cont
 * Once the dev container finishes building, execute the following command in your dev container to start the site: `bundle exec jekyll serve`
 * Check out the site! http://localhost:4000/igecloud.dev/
 
-## Feedback and contributing 
-
-If you'd like to provide feedback on or contribute to the dev containers website, please feel free to open an issue or PR in this repo.
-
-For issues on and contributions to the dev container specification itself, please visit the [Dev Containers Spec repo (https://github.com/igeclouds/devconspec).
-
-## License
-
-License for this repository: https://github.com/devcontainers/containers.dev/blob/gh-pages/LICENSE.
