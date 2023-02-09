@@ -28,7 +28,7 @@ It is from this [Jekyll definition](https://github.com/microsoft/vscode-dev-cont
 
 If you'd like to provide feedback on or contribute to the dev containers website, please feel free to open an issue or PR in this repo.
 
-For issues on and contributions to the dev container specification itself, please visit the [Dev Containers Spec repo](https://github.com/devcontainers/spec).
+For issues on and contributions to the dev container specification itself, please visit the [Dev Containers Spec repo (https://github.com/igeclouds/devconspec).
 
 ## License
 
