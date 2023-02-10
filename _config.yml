@@ -51,13 +51,13 @@ defaults:
     layout: implementors
     sectionid: implementors
 
-collections:
+kubernetes:
   docs:
-    permalink: /:collection/:path/
+    permalink: /:kubernetes/:path/
     output: true
   posts:
     permalink: /kubernetes/:title
     output: true
   implementors:
-    permalink: /:collection/:path/
+    permalink: /:kubernetes/:path/
     output: true
