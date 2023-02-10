@@ -12,17 +12,17 @@ If you'd like to build and preview the site yourself, we make it as smooth as po
 
 You may build GitHub Pages sites with [Jekyll](https://jekyllrb.com/), which is a Ruby gem. You could manually install these tools on your machine, or you can easily get started with the setup you already need through a dev container!
 
-You may review this repo's dev container in the [`.devcontainer`](https://github.com/devcontainers/containers.dev/tree/gh-pages/.devcontainer) folder.
+You may review this repo's dev container in the [`.devcontainer`](https://github.com/igeclouds/igeclouds.dev/tree/gh-pages/.devcontainer) folder.
 
 It is from this [Jekyll definition](https://github.com/microsoft/vscode-dev-containers/tree/main/containers/jekyll).
 
 ### Steps to build and run
 
 * Clone or open this repo in the dev container-supporting editor of your choosing.
-     * You may review supporting tools and services [here](https://containers.dev/supporting).
+     * You may review supporting tools and services [here](https://igeclouds.dev/supporting).
 * Reopen this repo in the dev container, so that the container builds and you may develop inside it using the included tools. 
 * Once the dev container finishes building, execute the following command in your dev container to start the site: `bundle exec jekyll serve`
-* Check out the site! http://localhost:4000/containers.dev/
+* Check out the site! http://localhost:4000/igeclouds.dev/
 
 ## Feedback and contributing 
 
@@ -32,4 +32,4 @@ For issues on and contributions to the dev container specification itself, pleas
 
 ## License
 
-License for this repository: https://github.com/igeclouds/igecloud.dev/blob/gh-pages/LICENSE.
+License for this repository: https://github.com/igeclouds/devcontainers/blob/gh-pages/LICENSE.
