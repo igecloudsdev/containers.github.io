@@ -1,12 +1,12 @@
 # Site settings
-title: Development containers
+title: Internet Governance Experts
 description: >
   Development containers documentation and specification page.
 
 # baseurl: / # the subpath of your site, e.g. /blog/
-url: https://projectservice.github.io # the base hostname & protocol for your site
-git_address: https://github.com/igeclouds/projectservice.github.io
-git_edit_address: https://github.com/igeclouds/projectservice.github.io/settings/pages/blob/gh-pages
+url: https://igecloud.dev/devcontainers
+git_address: https://github.com/igeclouds/devcontainers.github.io
+git_edit_address: https://github.com/igeclouds/devcontainers.github.io/settings/pages/blob/gh-pages
 
 # Build settings
 markdown: kramdown
@@ -33,7 +33,7 @@ defaults:
     type: posts
   values:
     layout: post
-    sectionid: guide
+    sectionid: kubernetes
 
 - scope:
     path: _docs
@@ -56,7 +56,7 @@ collections:
     permalink: /:collection/:path/
     output: true
   posts:
-    permalink: /guide/:title
+    permalink: /kubernetes/:title
     output: true
   implementors:
     permalink: /:collection/:path/
