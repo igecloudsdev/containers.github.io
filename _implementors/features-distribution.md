@@ -1,12 +1,12 @@
 ---
 layout: implementors
-title:  "Dev container Features contribution and discovery [proposal]"
+title:  "Dev container Features contribution and discovery"
 shortTitle: "Features distribution"
 author: Microsoft
 index: 6
 ---
 
-> Note: This section provides information on a currently active proposal. See the [Features distribution proposal in the spec repo](https://github.com/devcontainers/spec/issues/61) for input and links to other proposed improvements.
+**TL;DR Check out the [quick start repository](https://github.com/devcontainers/feature-template) to get started on distributing your own Dev Container Features.**
 
 This specification defines a pattern where community members and organizations can author and self-publish [Dev Container 'Features'](../features). 
 
@@ -87,7 +87,7 @@ Each Features's `devcontainer-feature.json` metadata file is appended into the `
 
 ## <a href="#distribution" name="distribution" class="anchor"> Distribution </a>
 
-There are several supported ways to distribute Features.  Distribution is handled by the implementing packaging tool.
+There are several supported ways to distribute Features. Distribution is handled by the implementing packaging tool such as the [Dev Container CLI](https://github.com/devcontainers/cli) or [Dev Container Publish GitHub Action](https://github.com/marketplace/actions/dev-container-publish). See the [quick start repository](https://github.com/devcontainers/feature-template) for a full working example.
 
 A user references a distributed Feature in a `devcontainer.json` as defined in ['referencing a feature'](../features#referencing-a-feature).
 

@@ -31,6 +31,13 @@ You may review the current devcontainer.json schemas in the spec repo, which inc
 					"description": "Features to add to the dev container.",
 					"additionalProperties": true
 				},
+				"overrideFeatureInstallOrder": {
+					"type": "array",
+					"description": "Array consisting of the Feature id (without the semantic version) of Features in the order the user wants them to be installed.",
+					"items": {
+						"type": "string"
+					}
+				},
 				"forwardPorts": {
 					"type": "array",
 					"description": "Ports that are forwarded from the container to the local machine. Can be an integer port number, or a string of the format \"host:port_number\".",
@@ -206,51 +213,101 @@ You may review the current devcontainer.json schemas in the spec repo, which inc
 				"onCreateCommand": {
 					"type": [
 						"string",
-						"array"
+						"array",
+						"object"
 					],
 					"description": "A command to run when creating the container. This command is run after \"initializeCommand\" and before \"updateContentCommand\". If this is a single string, it will be run in a shell. If this is an array of strings, it will be run as a single command without shell.",
 					"items": {
 						"type": "string"
+					},
+					"additionalProperties": {
+						"type": [
+							"string",
+							"array"
+						],
+						"items": {
+							"type": "string"
+						}
 					}
 				},
 				"updateContentCommand": {
 					"type": [
 						"string",
-						"array"
+						"array",
+						"object"
 					],
 					"description": "A command to run when creating the container and rerun when the workspace content was updated while creating the container. This command is run after \"onCreateCommand\" and before \"postCreateCommand\". If this is a single string, it will be run in a shell. If this is an array of strings, it will be run as a single command without shell.",
 					"items": {
 						"type": "string"
+					},
+					"additionalProperties": {
+						"type": [
+							"string",
+							"array"
+						],
+						"items": {
+							"type": "string"
+						}
 					}
 				},
 				"postCreateCommand": {
 					"type": [
 						"string",
-						"array"
+						"array",
+						"object"
 					],
 					"description": "A command to run after creating the container. This command is run after \"updateContentCommand\" and before \"postStartCommand\". If this is a single string, it will be run in a shell. If this is an array of strings, it will be run as a single command without shell.",
 					"items": {
 						"type": "string"
+					},
+					"additionalProperties": {
+						"type": [
+							"string",
+							"array"
+						],
+						"items": {
+							"type": "string"
+						}
 					}
 				},
 				"postStartCommand": {
 					"type": [
 						"string",
-						"array"
+						"array",
+						"object"
 					],
 					"description": "A command to run after starting the container. This command is run after \"postCreateCommand\" and before \"postAttachCommand\". If this is a single string, it will be run in a shell. If this is an array of strings, it will be run as a single command without shell.",
 					"items": {
 						"type": "string"
+					},
+					"additionalProperties": {
+						"type": [
+							"string",
+							"array"
+						],
+						"items": {
+							"type": "string"
+						}
 					}
 				},
 				"postAttachCommand": {
 					"type": [
 						"string",
-						"array"
+						"array",
+						"object"
 					],
 					"description": "A command to run when attaching to the container. This command is run after \"postStartCommand\". If this is a single string, it will be run in a shell. If this is an array of strings, it will be run as a single command without shell.",
 					"items": {
 						"type": "string"
+					},
+					"additionalProperties": {
+						"type": [
+							"string",
+							"array"
+						],
+						"items": {
+							"type": "string"
+						}
 					}
 				},
 				"waitFor": {

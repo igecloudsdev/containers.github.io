@@ -4,9 +4,9 @@ description: >
   Development containers documentation and specification page.
 
 # baseurl: / # the subpath of your site, e.g. /blog/
-url: https://devcontainers.github.io # the base hostname & protocol for your site
-git_address: https://github.com/devcontainers/devcontainers.github.io
-git_edit_address: https://github.com/devcontainers/devcontainers.github.io/settings/pages/blob/gh-pages
+url: https://projectservice.github.io # the base hostname & protocol for your site
+git_address: https://github.com/igeclouds/projectservice.github.io
+git_edit_address: https://github.com/igeclouds/projectservice.github.io/settings/pages/blob/gh-pages
 
 # Build settings
 markdown: kramdown
@@ -25,7 +25,7 @@ exclude:
   - README.md
   - resources
 
-timezone: Europe/Zurich
+timezone: Europe/London
 
 defaults:
 - scope:
@@ -33,7 +33,7 @@ defaults:
     type: posts
   values:
     layout: post
-    sectionid: blog
+    sectionid: guide
 
 - scope:
     path: _docs
@@ -56,7 +56,7 @@ collections:
     permalink: /:collection/:path/
     output: true
   posts:
-    permalink: /blog/:year/:month/:day/:title/
+    permalink: /guide/:title
     output: true
   implementors:
     permalink: /:collection/:path/

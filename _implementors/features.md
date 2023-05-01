@@ -1,12 +1,10 @@
 ---
 layout: implementors
-title:  "Dev Container Features reference [proposal]"
+title:  "Dev Container Features reference"
 shortTitle: "Features"
 author: Microsoft
 index: 5
 ---
-
-> Note: This section provides information on a currently active proposal. See the [Features proposal in the spec repo](https://github.com/devcontainers/spec/issues/61) for input and links to other proposed improvements.
 
 Development container "Features" are self-contained, shareable units of installation code and development container configuration. The name comes from the idea that referencing one of them allows you to quickly and easily add more tooling, runtime, or library "Features" into your development container for you or your collaborators to use.
 
@@ -31,7 +29,9 @@ A Feature is a self contained entity in a folder with at least a `devcontainer-f
 
 ## <a href="#devcontainer-feature-json-properties" name="devcontainer-feature-json-properties" class="anchor"> devcontainer-feature.json properties </a>
 
-the `devcontainer-feature.json` file defines information about the feature to be used by any supporting tools and the way the Feature will be executed.
+The `devcontainer-feature.json` file defines information about the Feature to be used by any supporting tools and the way the Feature will be executed.
+
+[devContainerFeature.schema.json](https://github.com/devcontainers/spec/blob/main/schemas/devContainerFeature.schema.json) defines the schema for the `devcontainer-feature.json` file.
 
 The properties of the file are as follows:
 
@@ -52,7 +52,10 @@ The properties of the file are as follows:
 | `securityOpt` | array | Sets container security options like updating the [seccomp profile](https://docs.docker.com/engine/security/seccomp/) when the Feature is used. |
 | `entrypoint` | string | Set if the feature requires an "entrypoint" script that should fire at container start up. |
 | `customizations` | object | Product specific properties, each namespace under `customizations` is treated as a separate set of properties. For each of this sets the object is parsed, values are replaced while arrays are set as a union. |
-| `installsAfter` | array | Array of ID's of Features that should execute before this one. Allows control for feature authors on soft dependencies between different Features. |
+| `installsAfter` | array | Array of ID's of Features (omitting a version tag) that should execute before this one. Allows control for Feature authors on soft dependencies between different Features. |
+| `legacyIds` | array | Array of old IDs used to publish this Feature. The property is useful for renaming a currently published Feature within a single namespace. |
+| `deprecated` | boolean | Indicates that the Feature is deprecated, and will not receive any further updates/support. This property is intended to be used by the supporting tools for highlighting Feature deprecation. |
+| `mounts` | object | Defaults to unset. Cross-orchestrator way to add additional mounts to a container. Each value is an object that accepts the same values as the [Docker CLI `--mount` flag](https://docs.docker.com/engine/reference/commandline/run/#add-bind-mounts-or-volumes-using-the---mount-flag). The Pre-defined [devcontainerId](/_implementors/json_reference.md#variables-in-devcontainerjson) variable may be referenced in the value. For example:<br />`"mounts": [{ "source": "dind-var-lib-docker", "target": "/var/lib/docker", "type": "volume" }]` |
 {: .table .table-bordered .table-responsive}
 
 ### <a href="#options-property" name="options-property" class="anchor"> The `options` property </a>
@@ -81,6 +84,69 @@ The options property contains a map of option IDs and their related configuratio
 | `optionId.default` | string or boolean | Default value for the option. |
 | `optionId.description` | string | Description for the option. |
 {: .table .table-bordered .table-responsive}
+
+### <a href="#user-env-var" name="user-env-var" class="anchor"> User environment variables </a>
+
+Feature scripts run as the `root` user and sometimes need to know which user account the dev container will be used with.
+
+`_REMOTE_USER` and `_CONTAINER_USER` environment variables are passsed to the Features scripts with `_CONTAINER_USER` being the container's user and `_REMOTE_USER` being the configured `remoteUser`. If no `remoteUser` is configured, `_REMOTE_USER` is set to the same value as `_CONTAINER_USER`.
+
+Additionally, the home folders of the two users are passed to the Feature scripts as `_REMOTE_USER_HOME` and `_CONTAINER_USER_HOME` environment variables.
+
+The container user can be set with `containerUser` in the devcontainer.json and image metadata, `user` in the docker-compose.yml, `USER` in the Dockerfile, and can be passed down from the base image.
+
+### <a href="#dev-container-id" name="dev-container-id" class="anchor"> Dev Container ID </a>
+
+An identifier will be referred to as `${devcontainerId}` in the devcontainer.json and the Feature metadata and that will be replaced with the dev container's id. It should only be used in parts of the configuration and metadata that is not used for building the image because that would otherwise prevent pre-building the image at a time when the dev container's id is not known yet. Excluding boolean, numbers and enum properties the properties supporting `${devcontainerId}` in the Feature metadata are: `entrypoint`, `mounts`, `customizations`.
+
+Implementations can choose how to compute this identifier. They must ensure that it is unique among other dev containers on the same Docker host and that it is stable across rebuilds of dev containers. The identifier must only contain alphanumeric characters. We describe a way to do this below.
+
+#### <a href="#label-based" name="label-based" class="anchor"> Label-based Implementation  </a>
+
+The following assumes that a dev container can be identified among other dev containers on the same Docker host by a set of labels on the container. Implementations may choose to follow this approach.
+
+The identifier is derived from the set of container labels uniquely identifying the dev container. It is up to the implementation to choose these labels. E.g., if the dev container is based on a local folder the label could be named `devcontainer.local_folder` and have the local folder's path as its value.
+
+E.g., the [`ghcr.io/devcontainers/features/docker-in-docker` Feature](https://github.com/devcontainers/features/blob/main/src/docker-in-docker/devcontainer-feature.json) could use the dev container id with:
+
+```jsonc
+{
+    "id": "docker-in-docker",
+    "version": "1.0.4",
+    // ...
+    "mounts": [
+        {
+            "source": "dind-var-lib-docker-${devcontainerId}",
+            "target": "/var/lib/docker",
+            "type": "volume"
+        }
+    ]
+}
+```
+
+#### <a href="#label-based-comp" name="label-based-comp" class="anchor"> Label-based Computation  </a>
+
+- Input the labels as a JSON object with the object's keys being the label names and the object's values being the labels' values.
+	- To ensure implementations get to the same result, the object keys must be sorted and any optional whitespace outside of the keys and values must be removed.
+- Compute a SHA-256 hash from the UTF-8 encoded input string.
+- Use a base-32 encoded representation left-padded with '0' to 52 characters as the result.
+
+JavaScript implementation taking an object with the labels as argument and returning a string as the result:
+
+```js
+const crypto = require('crypto');
+function uniqueIdForLabels(idLabels) {
+	const stringInput = JSON.stringify(idLabels, Object.keys(idLabels).sort()); // sort properties
+	const bufferInput = Buffer.from(stringInput, 'utf-8');
+	const hash = crypto.createHash('sha256')
+		.update(bufferInput)
+		.digest();
+	const uniqueId = BigInt(`0x${hash.toString('hex')}`)
+		.toString(32)
+		.padStart(52, '0');
+	return uniqueId;
+}
+```
 
 ## <a href="#devcontainer-json-properties" name="devcontainer-json-properties" class="anchor"> devcontainer.json properties </a>
 
@@ -141,7 +207,7 @@ The `id` format specified dicates how a supporting tool will locate and download
 
 (*) OCI registry must implement the [OCI Artifact Distribution Specification](https://github.com/opencontainers/distribution-spec). Some implementors can be [found here](https://oras.land/implementors/).
 
-(**) The provided path is always relative to the folder containing the `devcontainer.json`. Further requirements are outlined in the [Locally Referenced Addendum](devcontainer-features-distribution#Addendum:-Locally-Referenced).
+(**) The provided path is always relative to the folder containing the `devcontainer.json`. Further requirements are outlined in the [Locally Referenced Addendum](../features-distribution#addendum-locally-referenced).
 
 ## <a href="#versioning" name="versioning" class="anchor"> Versioning </a>
 
@@ -161,7 +227,7 @@ If the Feature is included in a folder as part of the repository that contains `
 
 ## <a href="#release" name="release" class="anchor"> Release </a>
 
-_For information on distribution features, see [the dev container features distribution proposal](../features-distribution)._
+_For information on distributing Features, see [the dev container features distribution page](../features-distribution)._
 
 ## <a href="#execution" name="execution" class="anchor"> Execution </a>
 
@@ -171,7 +237,7 @@ The `install.sh` script for each Feature should be executed as `root` during a c
 
 To ensure that the appropriate shell is used, the execute bit should be set on `install.sh` and the file invoked directly (e.g. `chmod +x install.sh && ./install.sh`). 
 
-> **Note:** It is recommended that Feature authers write `install.sh` using a shell available by default in their supported distributions (e.g., `bash` in Debian/Ubuntu or Fedora, `sh` in Alpine). In the event a different shell is required (e.g., `fish`), `install.sh` can be used to boostrap by checking for the presence of the desired shell, installing it if needed, and then invoking a secondary script using the shell.
+> **Note:** It is recommended that Feature authors write `install.sh` using a shell available by default in their supported distributions (e.g., `bash` in Debian/Ubuntu or Fedora, `sh` in Alpine). In the event a different shell is required (e.g., `fish`), `install.sh` can be used to boostrap by checking for the presence of the desired shell, installing it if needed, and then invoking a secondary script using the shell.
 > 
 > The `install.sh` file can similarly be used to bootstrap something written in a compiled language like Go. Given the increasing likelihood that a Feature needs to work on both x86_64 and arm64-based devices (e.g., Apple Silicon Macs), `install.sh` can detect the current architecture (e.g., using something like `uname -m` or `dpkg --print-architecture`), and then invoke the right executable for that architecture.
 
@@ -188,7 +254,7 @@ If any of the following properties are provided in the Feature's `devcontainer-f
 
 This property is declared by the user in their `devcontainer.json` file.
 
-Any un-versioned feature IDs listed in this array will be installed before all other Features, in the provided order. Any omitted Features will be installed in an order selected by the implementing tool, or ordered via the `installsAfter` property _after_  any Features listed in the `overrideFeatureInstallOrder` array, if applicable. 
+Any **un-versioned** Feature IDs listed in this array will be installed before all other Features, in the provided order. Any omitted Features will be installed in an order selected by the implementing tool, or ordered via the `installsAfter` property _after_  any Features listed in the `overrideFeatureInstallOrder` array, if applicable.
 
 All un-versioned Feature `id`s provided in `overrideFeatureInstallOrder` must also exist in the `features` property of a user's `devcontainer.json`. For instance, all the Features which follows the OCI registry format would include everything except for the label that contains the version (`<oci-registry>/<namespace>/<feature>` without the `:<semantic-version>`).
 
@@ -210,13 +276,15 @@ Example:
 
 #### <a href="#installsAfter" name="installsAfter" class="anchor"> (2) The `installsAfter` Feature property </a>
 
-This property is defined in an individual Feature's `devcontainer-feature.json` file by the feature author.  `installsAfter` allows an author to provide the tooling hints on loose dependencies between Features.
+This property is defined in an individual feature's `devcontainer-feature.json` file by the feature author. `installsAfter` allows an author to provide the tooling hints on loose dependencies between Features.
+
+> This property is mostly useful for optimizing build time (by reordering the Feature installation to reduce installing a required CLI twice, for example).  Ideally, all Features should be able to fully install themselves without requiring another Feature to be pre-installed.
 
 After `overrideFeatureInstallOrder` is resolved, any remaining Features that declare an `installsAfter` must be installed after the Features declared in the property, provided that the features have also been declared in the `features` property.
 
 | Property | Type | Description |
 | :--- | :--- | :--- |
-| `installsAfter` | array | Array consisting of the Feature `id` that should be installed before the given Feature. |
+| `installsAfter` | array | Array consisting of the Feature `id` (omitting a version tag) that should be installed before the given Feature |
 {: .table .table-bordered .table-responsive}
 
 ### <a href="#option-resolution" name="option-resolution" class="anchor"> Option Resolution </a>
@@ -300,14 +368,53 @@ Pip? false
 Optimize? true
 ```
 
+### <a href="#steps-to-rename-a-feature" name="steps-to-rename-a-feature" class="anchor"> Steps to rename a Feature </a>
+
+1. Update the Feature [source code](./features-distribution.md#source-code) folder and the `id` property in the [devcontainer-feature.json properties](#devcontainer-featurejson-properties) to reflect the new `id`. Other properties (`name`, `documentationUrl`, etc.) can optionally be updated during this step.
+2. Add or update the `legacyIds` property to the Feature, including the previously used `id`.
+3. Bump the semantic version of the Feature.  
+4. Rerun the `devcontainer features publish` command, or equivalent tool that implements the [Features distribution specification](./features-distribution.md#distribution).
+
+#### Example: Renaming a Feature
+
+Let's say we currently have a `docker-from-docker` Feature 👇 
+
+Current `devcontainer-feature.json` : 
+
+```jsonc
+{
+    "id": "docker-from-docker",
+    "version": "2.0.1",
+    "name": "Docker (Docker-from-Docker)",
+    "documentationURL": "https://github.com/devcontainers/features/tree/main/src/docker-from-docker",
+    ....
+}
+```
+
+We'd want to rename this Feature to `docker-outside-of-docker`. The source code folder of the Feature will be updated to `docker-outside-of-docker` and the updated `devcontainer-feature.json` will look like 👇 
+
+```jsonc
+{
+    "id": "docker-outside-of-docker",
+    "version": "2.0.2",
+    "name": "Docker (Docker-outside-of-Docker)",
+    "documentationURL": "https://github.com/devcontainers/features/tree/main/src/docker-outside-of-docker",
+    "legacyIds": [
+        "docker-from-docker"
+    ]
+    ....
+}
+```
+
+**Note** - The semantic version of the Feature defined by the `version` property should be **continued** and should not be restarted at `1.0.0`.
+
 ### <a href="#implementation-notes" name="implementation-notes" class="anchor"> Implementation notes </a>
 
 There are several things to keep in mind for an application that implements Features:
 
-- The order of execution of Features is determined by the application, based on the `installAfter` property used by Feature authors. It can be overridden by users if necessary with the `overrideFeatureInstallOrder` in `devcontainer.json`.
+- The order of execution of Features is determined by the application, based on the `installsAfter` property used by Feature authors. It can be overridden by users if necessary with the `overrideFeatureInstallOrder` in `devcontainer.json`.
 - Features are used to create an image that can be used to create a container or not.
 - Parameters like `privileged`, `init` are included if just 1 feature requires them.
 - Parameters like `capAdd`, `securityOp`  are concatenated.
 - `containerEnv` is added before the feature is executed as `ENV` commands in the Dockerfile.
 - Each Feature script executes as its own layer to aid in caching and rebuilding.
-- There is also a proposal to move properties like `privileged` to `devcontainer.json` for consistency and to reduce reliance on the `runArgs` property. See https://github.com/devcontainers/spec/issues/2.

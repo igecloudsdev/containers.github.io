@@ -11,7 +11,7 @@ The reference implementation for the specification is available through a [devel
 ## <a href="#what-is-CLI" name="what-is-CLI" class="anchor"> What is the dev container CLI? </a>
 When tools like VS Code and Codespaces detect a devcontainer.json file in a user's project, they use a CLI to configure a dev container. We've now opened up this CLI as a reference implementation so that individual users and other tools can read in devcontainer.json metadata and create dev containers from it.
 
-This CLI can either be used directly or integrated into product experiences, similar to how it's integrated with Remote - Containers and Codespaces today. It currently supports both a simple single container option and integrates with [Docker Compose](https://docs.docker.com/compose/) for multi-container scenarios.
+This CLI can either be used directly or integrated into product experiences, similar to how it's integrated with Dev Containers and Codespaces today. It currently supports both a simple single container option and integrates with [Docker Compose](https://docs.docker.com/compose/) for multi-container scenarios.
 
 The CLI is available for review in a new [devcontainers/cli](https://github.com/devcontainers/cli) repository, and you can read more about its development in [this issue](https://github.com/devcontainers/spec/issues/9) in the spec repo.
 
@@ -39,6 +39,8 @@ Commands:
   devcontainer build [path]         Build a dev container image
   devcontainer run-user-commands    Run user commands
   devcontainer read-configuration   Read configuration
+  devcontainer features             Features commands
+  devcontainer templates            Templates commands
   devcontainer exec <cmd> [args..]  Execute a command on a running dev container
 
 Options:
@@ -98,3 +100,38 @@ Hello, VS Code Remote - Containers!
 Congrats, you've just run the dev container CLI and seen it in action!
 
 These steps are also provided in the CLI repo's [README](https://github.com/devcontainers/cli/blob/main/README.md). You may also review frequently asked questions [here](https://github.com/devcontainers/spec/issues/31).
+
+### <a href="#prebuilding" name="prebuilding" class="anchor"> Prebuilding </a> 
+We recommend pre-building images with the tools you need rather than creating and building a container image each time you open your project in a dev container. Using pre-built images will result in a faster container startup, simpler configuration, and allows you to pin to a specific version of tools to improve supply-chain security and avoid potential breaks. You can automate pre-building your image by scheduling the build using a DevOps or continuous integration (CI) service like GitHub Actions.
+
+We recommend using the [Dev Container CLI](#npm-install) (or other spec supporting utilities like the [GitHub Action](https://github.com/marketplace/actions/devcontainers-ci) or [Azure DevOps task](https://marketplace.visualstudio.com/items?itemName=devcontainers.ci)) to pre-build your images. Once you've built your image, you can push it to a container registry (like the [Azure Container Registry](https://learn.microsoft.com/azure/container-registry/container-registry-get-started-docker-cli?tabs=azure-cli), [GitHub Container Registry](https://docs.github.com/packages/working-with-a-github-packages-registry/working-with-the-container-registry#pushing-container-images), or [Docker Hub](https://docs.docker.com/engine/reference/commandline/push)) and reference it directly.
+
+```bash
+devcontainer build --workspace-folder . --push true --image-name <my_image_name>:<optional_image_version>
+```
+
+#### <a href="#labels" name="labels" class="anchor"> Metadata in image labels</a> 
+
+You can include Dev Container configuration and Feature metadata in prebuilt images via [image labels](https://docs.docker.com/config/labels-custom-metadata/). This makes the image self-contained since these settings are automatically picked up when the image is referenced - whether directly, in a `FROM` in a referenced Dockerfile, or in a Docker Compose file. This helps prevent your Dev Container config and image contents from getting out of sync, and allows you to push updates of the same configuration to multiple repositories through a simple image reference.
+
+This metadata label is **automatically added** when you pre-build using the [Dev Container CLI](#npm-install) (or other spec supporting utilities like the [GitHub Action](https://github.com/marketplace/actions/devcontainers-ci) or [Azure DevOps task](https://marketplace.visualstudio.com/items?itemName=devcontainers.ci)) and includes settings from devcontainer.json and any referenced Dev Container Features.
+
+This allows you to have a separate **more complex** devcontainer.json you use to pre-build your image, and then a dramatically **simplified one** in one or more repositories. The contents of the image will be merged with this simplified devcontainer.json content at the time you create the container (see the [the spec](/implementors/spec/#merge-logic) for info on merge logic). But at its simplest, you can just reference the image directly in devcontainer.json for the settings to take effect:
+
+```json
+{
+    "image": "mcr.microsoft.com/devcontainers/go:1"
+}
+```
+
+Note that you can also opt to you can opt to manually add metadata to an image label instead. These properties will be picked up even if you didn't use the Dev Container CLI to build (and can be updated by the CLI even if you do). For example, consider this Dockerfile snippet:
+
+```Dockerfile
+LABEL devcontainer.metadata='[{ \
+  "capAdd": [ "SYS_PTRACE" ], \
+  "remoteUser": "devcontainer", \ 
+  "postCreateCommand": "yarn install" \ 
+}]'
+```
+
+See [Dev Container metadata reference](../json_reference) for information on which properties are supported.

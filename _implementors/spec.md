@@ -30,6 +30,82 @@ While the structure of this metadata is critical, it is also important to call o
 
 It is valid that these files may exist in more than one location, so consider providing a mechanism for users to select one when appropriate.
 
+## <a href="#image-metadata" name="image-metadata" class="anchor"> Image Metadata </a>
+
+Certain dev container metadata properties can be stored in an image label as an array of metadata snippets. This allows them to be stored in prebuilt images, such that, the image and its related configuration are self-contained. These contents should then be merged with any local devcontainer.json file contents at the time the container is created. An array is used so subsequent image builds can simply append changes to the array rather than attempting to merge at that point - which improves compatibility with arbitrary image build systems.
+
+Metadata should be representative of with the following structure, using one entry per [Dev Container Feature](../features) and devcontainer.json (see table below for the full list):
+
+
+```json
+[
+	{
+		"id"?: string,
+		"init"?: boolean,
+		"privileged"?: boolean,
+		"capAdd"?: string[],
+		"securityOpt"?: string[],
+		"entrypoint"?: string,
+		"mounts"?: [],
+		...
+		"customizations"?: {
+			...
+		}
+	},
+	...
+]
+```
+
+To simplify adding this metadata for other tools, we also support having a single top-level object with the same properties.
+
+The metadata is added to the image as a `devcontainer.metadata` label with a JSON string value representing the above array or single object.
+
+### <a href="#merge-logic" name="merge-logic" class="anchor"> Merge Logic </a>
+
+To apply the metadata together with a user's devcontainer.json at runtime the following merge logic by property is used. The table also notes which properties are currently supported coming from the devcontainer.json and which from the feature metadata, this will change over time as we add more properties.
+
+| Property | Type/Format | Merge Logic | devcontainer.json | Feature Metadata |
+| -------- | ----------- | ----------- | :---------------: | :--------------: |
+| `id` | E.g., `ghcr.io/devcontainers/features/node:1` | Not merged. |   | x |
+| `init` | `boolean` | `true` if at least one is `true`, `false` otherwise. | x | x |
+| `privileged` | `boolean` | `true` if at least one is `true`, `false` otherwise. | x | x |
+| `capAdd` | `string[]` | Union of all `capAdd` arrays without duplicates. | x | x |
+| `securityOpt` | `string[]` | Union of all `securityOpt` arrays without duplicates. | x | x |
+| `entrypoint` | `string` | Collected list of all entrypoints. |   | x |
+| `mounts` | `(string \| { type, src, dst })[]` | Collected list of all mountpoints. Conflicts: Last source wins. | x | x |
+| `onCreateCommand` | `string \| string[] \| {[key: string]: string \| string[]}` | Collected list of all onCreateCommands. | x |   |
+| `updateContentCommand` | `string \| string[] \| {[key: string]: string \| string[]}` | Collected list of all updateContentCommands. | x |   |
+| `postCreateCommand` | `string \| string[] \| {[key: string]: string \| string[]}` | Collected list of all postCreateCommands. | x |   |
+| `postStartCommand` | `string \| string[] \| {[key: string]: string \| string[]}` | Collected list of all postStartCommands. | x |   |
+| `postAttachCommand` | `string \| string[] \| {[key: string]: string \| string[]}` | Collected list of all postAttachCommands. | x |   |
+| `waitFor` | enum | Last value wins. | x |   |
+| `customizations` | Object of tool-specific customizations. | Merging is left to the tools. | x | x |
+| `containerUser` | `string` | Last value wins. | x |   |
+| `remoteUser` | `string` | Last value wins. | x |   |
+| `userEnvProbe` | `string` (enum) | Last value wins. | x |   |
+| `remoteEnv` | Object of strings. | Per variable, last value wins. | x |   |
+| `containerEnv` | Object of strings. | Per variable, last value wins. | x |   |
+| `overrideCommand` | `boolean` | Last value wins. | x |   |
+| `portsAttributes` | Map of ports to attributes. | Per port (not per port attribute), last value wins. | x |   |
+| `otherPortsAttributes` | Port attributes. | Last value wins (not per port attribute). | x |   |
+| `forwardPorts` | `(number \| string)[]` | Union of all ports without duplicates. Last one wins (when mapping changes). | x |   |
+| `shutdownAction` | `string` (enum) | Last value wins. | x |   |
+| `updateRemoteUserUID` | `boolean` | Last value wins. | x |   |
+| `hostRequirements` | `cpus`, `memory`, `storage` | Max value wins. | x |   |
+{: .table .table-bordered .table-responsive}
+
+Variables in string values will be substituted at the time the value is applied. When the order matters, the devcontainer.json is considered last.
+
+### <a href="#metadata-notes" name="metadata-notes" class="anchor"> Notes </a>
+
+- Passing the label as a `LABEL` instruction in the Dockerfile:
+	- The size limit on Dockerfiles is around 1.3MB. The line length is limited to 65k characters.
+	- Using one line per feature should allow for making full use of these limits.
+- Passing the label as a command line argument:
+	- There is no size limit documented for labels, but the daemon returns an error when the request header is >500kb.
+	- The 500kb limit is shared, so we cannot use a second label in the same build to avoid it.
+	- If/when this becomes an issue we could embed the metadata as a file in the image (e.g., with a label indicating it).
+
 ## <a href="#orchestration-options" name="orchestration-options" class="anchor"> Orchestration options </a>
 
 A core principle of this specification is to seek to enrich existing container orchestrator formats with development container metadata where appropriate rather than replacing them. As a result, the metadata schema includes a set of optional properties for interoperating with different orchestrators. Today, the specification includes scenario-specific properties for working without a container orchestrator (by directly referencing an image or Dockerfile) and for using Docker Compose as a simple multi-container orchestrator. At the same time, this specification leaves space for further development and implementation of other orchestrator mechanisms and file formats. 
@@ -67,11 +143,11 @@ In addition to the configuration options explained above, there are other settin
 
 A complete list of available metadata properties and their purposes can be found in the [`devcontainer.json` reference](https://aka.ms/devcontainer.json). However, we will describe the critical ones below in more detail.
 
-## <a href="#features-preview" name="features-preview" class="anchor"> Features (preview) </a>
+## <a href="#features" name="features" class="anchor"> Features</a>
 
 Development container "Features" are self-contained, shareable units of installation code and development container configuration. The name comes from the idea that referencing one of them allows you to quickly and easily add more tooling, runtime, or library "features" into your development container for you or your collaborators to use.
 
-They are applied to container images as a secondary build step and can affect a number of dev container configuration settings. See the [features documentation](./features.md) for more details.
+They are applied to container images as a secondary build step and can affect a number of dev container configuration settings. See the [features documentation](../features) for more details.
 
 ## <a href="#environment-variables" name="environment-variables" class="anchor"> Environment variables </a>
 
@@ -102,7 +178,7 @@ See [`workspaceMount` and `workspaceFolder`](../json_reference#image-specific) f
 
 Users control the permissions of applications executed in the containers, allowing the developer to control them. The specification takes into account two types of user definitions:
 
-* **Container User**: The user that will be used for all operations that run inside a container. This concept is native to containers. It may be set in the container image, using the `continerUser` property for  **image** and **dockerfile** scenarios, or using an orchestratric specific property like `user` property in Docker Compose files.
+* **Container User**: The user that will be used for all operations that run inside a container. This concept is native to containers. It may be set in the container image, using the `containerUser` property for  **image** and **dockerfile** scenarios, or using an orchestratric specific property like `user` property in Docker Compose files.
 * **Remote User**: Used to run the [lifecycle](#lifecycle) scripts inside the container. This is also the user tools and editors that connect to the container should use to run their processes. This concept is not native to containers. Set using the `remoteEnv` property in all cases and defaults to the container user.
 
 This separation allows the ENTRYPOINT for the image to execute with different permissions than the developer and allows for developers to switch users without recreating their containers.
@@ -193,6 +269,25 @@ To resume the environment from a stopped state:
 3. Additionally, execute the `postStartCommand` and `postAttachCommand` in the container.
 
 Like during the create process, remote [environment variables](#environment-variables) and [user](#users) configuration should be applied to all created processes in the container (inclusive of `userEnvProbe`).
+
+## <a href="#parallel-exec" name="parallel-exec" class="anchor"> Parallel lifecycle script execution </a>
+
+Dev containers support a single command for each of its lifecycle scripts. While serial execution of multiple commands can be achieved with `;`, `&&`, etc., parallel execution deserves first-class support.
+
+All lifecycle scripts have been extended to support `object` types. The key of the `object` will be a unique name for the command and the value will be the `string` or `array` command. Each command must exit successfully for the stage to be considered successful.
+
+Each entry in the `object` will be run in parallel during that lifecycle step.
+
+### Example
+
+```json
+{
+  "postCreateCommand": {
+    "server": "npm start",
+    "db": ["mysql", "-u", "root", "-p", "my database"]
+  }
+}
+```
 
 # <a href="#definitions" name="definitions" class="anchor"> Definitions </a>
 #### <a href="#project-workspace-folder" name="project-workspace-folder" class="anchor"> Project Workspace Folder </a>
